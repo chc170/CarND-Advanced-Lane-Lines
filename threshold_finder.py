@@ -152,11 +152,12 @@ class EdgeFinder:
         return self._filtered_img
 
     def _render(self):
-        img_yuv = cv2.cvtColor(self.image, cv2.COLOR_BGR2YUV)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        img_yuv[:,:,0] = clahe.apply(img_yuv[:,:,0])
-        image = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
-        
+        #img_yuv = cv2.cvtColor(self.image, cv2.COLOR_BGR2YUV)
+        #clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        #img_yuv[:,:,0] = clahe.apply(img_yuv[:,:,0])
+        #image = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
+        image = self.image
+
         hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS).astype(np.float)
         y_threshed = cv2.inRange(
             hls, 
