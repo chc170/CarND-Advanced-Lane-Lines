@@ -33,7 +33,7 @@ from scipy.signal import find_peaks_cwt
 # 
 # ## 1. Camera calibration using chessboard images
 
-# In[6]:
+# In[2]:
 
 def camera_calibration(image_tmpl, output_dir='.'):
     
@@ -77,7 +77,7 @@ mtx, dist = camera_calibration('camera_cal/calibration*.jpg')
 
 # ## 2. Undistort raw image
 
-# In[2]:
+# In[3]:
 
 def load_undistort_params(input_dir='.'):
     input_file = os.path.join(input_dir, 'dist_pickle.p')
@@ -104,7 +104,7 @@ ax2.set_title('Undistorted Image', fontsize=30)
 
 # ## 3. Perspective transform
 
-# In[12]:
+# In[4]:
 
 def perspective_transform(image, inverse=False):
     """
@@ -122,7 +122,7 @@ def perspective_transform(image, inverse=False):
     
     return warped, M
 
-dst = cv2.imread('test_images/challenge3_undist.jpg')
+dst = cv2.imread('test_images/straight_lines2_undist.jpg')
 warped, M = perspective_transform(dst)
 
 # Visualize perspective transform
@@ -138,13 +138,14 @@ warped_line = warped.copy()
 cv2.polylines(warped_line, [pts], True, (0, 0, 255), thickness=3)
 ax2.imshow(cv2.cvtColor(warped_line, cv2.COLOR_BGR2RGB))
 ax2.set_title('Warped Image', fontsize=30)
+cv2.imwrite('test_images/warped.jpg', cv2.cvtColor(warped_line, cv2.COLOR_BGR2RGB))
 
 
 # ## 4. Create Threshold Binary Image (Color & Graident)
 
 # ### Histogram Equalization
 
-# In[11]:
+# In[4]:
 
 def histogram_equalization(image):
     """
@@ -167,7 +168,7 @@ ax2.imshow(cv2.cvtColor(equalized, cv2.COLOR_BGR2RGB))
 ax2.set_title('Undistorted Image', fontsize=30)
 
 
-# In[13]:
+# In[5]:
 
 def create_threshold_binary_image(image, print_color=False):
     image = np.copy(image)
@@ -234,11 +235,11 @@ ax2.set_title('Undistorted Image', fontsize=30)
 
 # ## 5. Find lane lines
 
-# In[94]:
+# In[7]:
 
 # Visiualize sliding window
 # https://blog.ytotech.com/2015/11/01/findpeaks-in-python/
-binary_img = luv_filter(warped)
+
 binary_img = create_threshold_binary_image(warped)
 
 nb_win = 7
@@ -373,7 +374,7 @@ def find_lane_points_bak(binary_image, show_image=False):
 l_points, r_points, _, _ = find_lane_points_bak(binary_img1, show_image=True)
 
 
-# In[95]:
+# In[8]:
 
 def find_lane_points(binary_image):
     """
@@ -458,7 +459,7 @@ def find_lane_points(binary_image):
 l_points, r_points, out_img = find_lane_points(binary_img)
 
 
-# In[96]:
+# In[9]:
 
 def find_lane_points_with_prev(l_fit, r_fit, binary_image):
 
@@ -512,7 +513,7 @@ def find_lane_points_with_prev(l_fit, r_fit, binary_image):
 
 # ## 6. Measure Curvature
 
-# In[97]:
+# In[10]:
 
 def fit_poly(x_vals, y_vals, y_max):
     # fit second order polynomial
@@ -555,7 +556,7 @@ ax2.set_xlim(0, 1280)
 ax2.set_ylim(720, 0)
 
 
-# In[98]:
+# In[11]:
 
 l_points, r_points, out_img = find_lane_points_with_prev(l_fit, r_fit, binary_img)
 
@@ -595,7 +596,7 @@ ax2.set_ylim(720, 0)
 
 # ## 7 & 8. Reversed Perspective Transform
 
-# In[99]:
+# In[13]:
 
 def create_lane_boundary_image(l_fit, r_fit, image):
 
@@ -615,16 +616,16 @@ def create_lane_boundary_image(l_fit, r_fit, image):
     cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
     return color_warp
 
-boundary_dst = create_lane_boundary_image(l_fit, r_fit, dst)
-boundary_dst, M = perspective_transform(boundary_dst, inverse=True)
+boundary = create_lane_boundary_image(l_fit, r_fit, dst)
+boundary, M = perspective_transform(boundary, inverse=True)
 
-result = cv2.addWeighted(cv2.cvtColor(dst, cv2.COLOR_BGR2RGB), 1, boundary_dst, 0.3, 0)
+result = cv2.addWeighted(cv2.cvtColor(dst, cv2.COLOR_BGR2RGB), 1, boundary, 0.3, 0)
 plt.imshow(result)
 
 
 # ## Video
 
-# In[46]:
+# In[14]:
 
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
@@ -634,35 +635,178 @@ from IPython.display import HTML
 # 
 # Define a class to receive the characteristics of each line detection
 
-# In[ ]:
+# In[64]:
 
 class Line():
-    def __init__(self):
-        # was the line detected in the last iteration?
-        self.detected = False  
-        # x values of the last n fits of the line
-        self.recent_xfitted = [] 
-        #average x values of the fitted line over the last n iterations
-        self.bestx = None     
-        #polynomial coefficients averaged over the last n iterations
-        self.best_fit = None  
-        #polynomial coefficients for the most recent fit
-        self.current_fit = [np.array([False])]  
-        #radius of curvature of the line in some units
-        self.radius_of_curvature = None 
-        #distance in meters of vehicle center from the line
-        self.line_base_pos = None 
-        #difference in fit coefficients between last and new fits
-        self.diffs = np.array([0,0,0], dtype='float') 
-        #x values for detected line pixels
-        self.allx = None  
-        #y values for detected line pixels
-        self.ally = None
+    def __init__(self):  
+        #: meters per pixel in y dimension
+        self.ym_per_pix = 3/115 
+        #: meters per pixel in x dimension
+        self.xm_per_pix = 3.7/750 
+        
+        self.radius_of_curvature = None
+        self.fit = None
+        self.detected = False
+        
+    @property
+    def min_diff(self):
+        return ()
+    
+    def fit_poly(self, x_vals, y_vals, y_max):
+        
+        if not x_vals.any() or not y_vals.any():
+            return 
+        
+        # fit second order polynomial
+        self.fit = np.polyfit(y_vals, x_vals, 2)
+
+        # calculate radius of curvature
+        fit_m = np.polyfit(y_vals*self.ym_per_pix,
+                           x_vals*self.xm_per_pix, 2)
+        self.radius_of_curvature =             ((1 + (2*fit_m[0]*y_max*self.ym_per_pix + fit_m[1])**2)**1.5) /             np.absolute(2*fit_m[0])
+
+class Lane():
+    
+    def __init__(self, prev_lane=None):
+        #: meters per pixel in y dimension
+        self.ym_per_pix = 3./100 
+        #: meters per pixel in x dimension
+        self.xm_per_pix = 3.7/740 
+
+        self.center = 0
+        self.detected = False
+        self.left_line = Line()
+        self.right_line = Line()
+        
+        self.prev_lane = prev_lane
+    
+    def validate(self, prev_lane):
+        
+        result = True
+        result = result and self.validate_lines()
+        if prev_lane:
+            result = result and self.validate_line_diff(prev_lane.left_line, self.left_line)
+            result = result and self.validate_line_diff(prev_lane.right_line, self.right_line)
+        self.detected = result 
+    
+    def validate_lines(self):
+        
+        if self.left_line and self.left_line.fit is not None and             self.right_line and self.right_line.fit is not None:
+            # check distance between left lane and right lane
+            self.center = ((self.left_line.fit[2] + self.right_line.fit[2]) / 2 - 640)                           * self.xm_per_pix
+            self.distance = np.abs(self.left_line.fit[2] - self.right_line.fit[2])                             * self.xm_per_pix
+            
+            print('Center: {}'.format(self.center))
+            print('Distance: {}'.format(self.distance))
+            return True
+            # check curvature difference between left lane and right lane
+            
+        return False
+    
+    def validate_line_diff(self, prev, curr):
+        
+        print("Prev: {}".format(prev.fit))
+        print("Curr: {}".format(curr.fit))
+        if 
+        print("Diff: {}".format(curr.fit - prev.fit))
+        return True
+        
+        
+    def create_lane_boundary_image(self, image):
+        l_fit = self.left_line.fit 
+        r_fit = self.right_line.fit
+        
+        # Create an image to draw the lines on
+        color_warp  = np.zeros_like(image).astype(np.uint8)
+
+        # Recast the x and y points into usable format for cv2.fillPoly()
+        y_vals = np.linspace(0, 100, num=101)*(image.shape[1]/100)
+        l_x_fit = l_fit[0]*y_vals**2 + l_fit[1]*y_vals + l_fit[2]
+        r_x_fit = r_fit[0]*y_vals**2 + r_fit[1]*y_vals + r_fit[2]
+
+        pts_left  = np.array([np.transpose(np.vstack([l_x_fit, y_vals]))])
+        pts_right = np.array([np.flipud(np.transpose(np.vstack([r_x_fit, y_vals])))])
+        pts = np.hstack((pts_left, pts_right))
+
+        # Draw the lane onto the warped blank image
+        cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
+        return color_warp        
+    
+
+
+# In[57]:
+
+MTX, DIST = load_undistort_params()
+
+def process_frame(image):
+    
+    image = image.copy()
+    
+    # lane detection pipeline
+    undist    = undistort_image(image, MTX, DIST)
+    warped, M = perspective_transform(undist)
+    equalized = histogram_equalization(warped)
+    binary    = create_threshold_binary_image(equalized)
+    
+    # load previous detected lane line
+    prev_lane = process_frame.history[-1] if process_frame.history else None
+    
+    # extract lane lines
+    if prev_lane and prev_lane.detected:
+        print("######### with prev")
+        l_points, r_points, out_img = find_lane_points_with_prev(
+            prev_lane.left_line.fit, prev_lane.right_line.fit, binary)
+    else:
+        print("######### without prev")
+        l_points, r_points, out_img = find_lane_points(binary)
+        
+    # default value
+    boundary = np.zeros_like(undist)
+    result = undist
+    
+    curr_lane = Lane()
+    curr_lane.left_line.fit_poly(l_points[0], l_points[1], height)
+    curr_lane.right_line.fit_poly(r_points[0], r_points[1], height)
+    curr_lane.validate(prev_lane)
+
+    if curr_lane.detected:
+        boundary = curr_lane.create_lane_boundary_image(undist)
+        boundary, M = perspective_transform(boundary, inverse=True)
+        result = cv2.addWeighted(undist, 1, boundary, 0.3, 0)
+        
+    if len(process_frame.history) >= 3:
+        process_frame.history.pop(0)
+    process_frame.history.append(curr_lane)
+  
+    
+    # build the result frame
+    new_h = image.shape[0]//2
+    new_w = image.shape[1]//2
+    output = np.zeros_like(image)
+    
+    undist = cv2.resize(undist, (0, 0), fx=.5, fy=.5)
+    binary = cv2.resize(binary, (0, 0), fx=.5, fy=.5)
+    out_img = cv2.resize(out_img, (0, 0), fx=.5, fy=.5)
+
+    binary[binary > 0] = 255
+    
+    boundary = cv2.resize(boundary, (0, 0), fx=.5, fy=.5)
+    result = cv2.resize(result, (0, 0), fx=.5, fy=.5)
+    output[:new_h,:new_w] = undist
+    output[new_h:, :new_w] = out_img
+    output[:new_h, new_w:] = boundary
+    output[new_h:, new_w:] = result
+    
+    # Print text
+    cv2.putText(output, "Left curvature: %.1f m." % curr_lane.left_line.radius_of_curvature, 
+                (50, 70), cv2.FONT_HERSHEY_DUPLEX, 1.3, (255, 255, 255), 2)
+    
+    return output 
 
 
 # In[125]:
 
-mtx, dist = load_undistort_params()
+MTX, DIST = load_undistort_params()
 
 def process_image(image):
 
@@ -671,33 +815,32 @@ def process_image(image):
     
     image = image.copy()
     
-    undist = undistort_image(image, mtx, dist)
+    undist = undistort_image(image, MTX, DIST)
     warped, M = perspective_transform(undist)
     equalized = histogram_equalization(warped)
     binary = create_threshold_binary_image(equalized)
+    
     if p_l_fit is None or p_r_fit is None:
         l_points, r_points, out_img = find_lane_points(binary)
     else:
         l_points, r_points, out_img = find_lane_points_with_prev(p_l_fit, p_r_fit, binary)
-    boundary_dst = None
+    
+    boundary = np.zeros_like(undist)
     
     if len(l_points[0]) > 0 and len(l_points[1]) > 0 and len(r_points[0]) > 0 and len(r_points[1]) > 0:
         l_fit, l_curverad = fit_poly(l_points[0], l_points[1], height)
         r_fit, r_curverad = fit_poly(r_points[0], r_points[1], height)
 
-        boundary_dst = create_lane_boundary_image(l_fit, r_fit, undist)
-        boundary_dst, M = perspective_transform(boundary_dst, inverse=True)
-
-        result = cv2.addWeighted(undist, 1, boundary_dst, 0.3, 0)
+        boundary = create_lane_boundary_image(l_fit, r_fit, undist)
+        boundary, M = perspective_transform(boundary, inverse=True)
+        result = cv2.addWeighted(undist, 1, boundary, 0.3, 0)
         
         process_image.p_l_fit = l_fit
         process_image.p_r_fit = r_fit
     else:
         result = undist
-        
-    # combine images
-    if boundary_dst is None:
-        boundary_dst = np.zeros_like(result)
+
+    # build the result frame
     new_h = image.shape[0]//2
     new_w = image.shape[1]//2
     output = np.zeros_like(image)
@@ -705,17 +848,14 @@ def process_image(image):
     undist = cv2.resize(undist, (0, 0), fx=.5, fy=.5)
     binary = cv2.resize(binary, (0, 0), fx=.5, fy=.5)
     out_img = cv2.resize(out_img, (0, 0), fx=.5, fy=.5)
-    #l_pnts = cv2.resize(l_pnts, (0, 0), fx=.5, fy=.5)
-    #r_pnts = cv2.resize(r_pnts, (0, 0), fx=.5, fy=.5)
 
     binary[binary > 0] = 255
-    #l_pnts[l_pnts > 0] = 255
-    #r_pnts[r_pnts > 0] = 255
-    boundary_dst = cv2.resize(boundary_dst, (0, 0), fx=.5, fy=.5)
+    
+    boundary = cv2.resize(boundary, (0, 0), fx=.5, fy=.5)
     result = cv2.resize(result, (0, 0), fx=.5, fy=.5)
     output[:new_h,:new_w] = undist
-    output[new_h:, :new_w] = out_img#np.dstack([binary, l_pnts, r_pnts])
-    output[:new_h, new_w:] = boundary_dst
+    output[new_h:, :new_w] = out_img
+    output[:new_h, new_w:] = boundary
     output[new_h:, new_w:] = result
     return output 
 
@@ -725,12 +865,11 @@ process_image.history = []
 
 # In[67]:
 
-process_image.p_l_fit = None
-process_image.p_r_fit = None
+process_frame.history = []
 
 output = 'videos/project_video_output.mp4'
-clip_in = VideoFileClip("videos/project_video.mp4")#.subclip(20,30)
-clip_out = clip_in.fl_image(process_image)
+clip_in = VideoFileClip("videos/project_video.mp4").subclip(0,2)
+clip_out = clip_in.fl_image(process_frame)
 get_ipython().magic('time clip_out.write_videofile(output, audio=False)')
 
 
@@ -743,14 +882,13 @@ HTML("""
 """.format(output))
 
 
-# In[129]:
+# In[65]:
 
-process_image.p_l_fit = None
-process_image.p_r_fit = None
+process_frame.history = []
 
 output = 'videos/challenge_video_output.mp4'
-clip_in = VideoFileClip("videos/challenge_video.mp4")#.subclip(0,10)
-clip_out = clip_in.fl_image(process_image)
+clip_in = VideoFileClip("videos/challenge_video.mp4").subclip(0, 2)
+clip_out = clip_in.fl_image(process_frame)
 get_ipython().magic('time clip_out.write_videofile(output, audio=False)')
 
 
@@ -765,8 +903,7 @@ HTML("""
 
 # In[130]:
 
-process_image.p_l_fit = None
-process_image.p_r_fit = None
+process_frame.history = []
 
 output = 'videos/harder_challenge_video_output.mp4'
 clip_in = VideoFileClip("videos/harder_challenge_video.mp4")#.subclip(0,10)
@@ -781,34 +918,4 @@ HTML("""
   <source src="{0}">
 </video>
 """.format(output))
-
-
-# ### Line Class
-
-# In[2]:
-
-
-
-
-# ### Draw lines
-
-# In[ ]:
-
-# Create an image to draw the lines on
-warp_zero = np.zeros_like(warped).astype(np.uint8)
-color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
-
-# Recast the x and y points into usable format for cv2.fillPoly()
-pts_left = np.array([np.transpose(np.vstack([left_fitx, yvals]))])
-pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, yvals])))])
-pts = np.hstack((pts_left, pts_right))
-
-# Draw the lane onto the warped blank image
-cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
-
-# Warp the blank back to original image space using inverse perspective matrix (Minv)
-newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0])) 
-# Combine the result with the original image
-result = cv2.addWeighted(undist, 1, newwarp, 0.3, 0)
-plt.imshow(result)
 
