@@ -158,7 +158,7 @@ class EdgeFinder:
         #image = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
         image = self.image
 
-        hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS).astype(np.float)
+        hls = cv2.cvtColor(image, cv2.COLOR_BGR2LUV).astype(np.float)
         y_threshed = cv2.inRange(
             hls, 
             np.array([self._channel1, self._channel2, self._channel3]), 
