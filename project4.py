@@ -89,10 +89,10 @@ def undistort_image(image, mtx, dist):
     return dst
 
 # Test undistortion on an image
-img = cv2.imread('test_images/test7.jpg')
+img = cv2.imread('test_images/straight_lines1.jpg')
 mtx, dist = load_undistort_params()
 dst = undistort_image(img, mtx, dist)
-cv2.imwrite('test_images/test7_undist.jpg', dst)
+cv2.imwrite('test_images/straight_lines1_undist.jpg', dst)
 
 # Visualize undistortion
 f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
@@ -104,7 +104,7 @@ ax2.set_title('Undistorted Image', fontsize=30)
 
 # ## 3. Perspective transform
 
-# In[115]:
+# In[3]:
 
 def perspective_transform(image, inverse=False):
     """
@@ -122,7 +122,7 @@ def perspective_transform(image, inverse=False):
     
     return warped, M
 
-dst = cv2.imread('test_images/challenge7_undist.jpg')
+dst = cv2.imread('test_images/straight_lines1_undist.jpg')
 warped, M = perspective_transform(dst)
 
 # Visualize perspective transform
@@ -145,7 +145,7 @@ cv2.imwrite('test_images/warped.jpg', cv2.cvtColor(warped_line, cv2.COLOR_BGR2RG
 
 # ### Histogram Equalization
 
-# In[116]:
+# In[4]:
 
 def histogram_equalization(image):
     """
@@ -168,7 +168,7 @@ ax2.imshow(cv2.cvtColor(equalized, cv2.COLOR_BGR2RGB))
 ax2.set_title('Undistorted Image', fontsize=30)
 
 
-# In[130]:
+# In[5]:
 
 def create_threshold_binary_image(image, print_color=False):
     """
@@ -179,9 +179,9 @@ def create_threshold_binary_image(image, print_color=False):
     # HLS color space. S channel performs well
     # on filtering yellow and white
     hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
-    hls_min = np.array([  0,   0, 180])
-    hls_max = np.array([255, 255, 255])
-    hls_mask = cv2.inRange(hls, hls_min, hls_max)
+    #hls_min = np.array([  0,   0, 180])
+    #hls_max = np.array([255, 255, 255])
+    #hls_mask = cv2.inRange(hls, hls_min, hls_max)
     
     yellow_min  = np.array([ 10,  80, 100])
     yellow_max  = np.array([100, 210, 155])
@@ -190,7 +190,7 @@ def create_threshold_binary_image(image, print_color=False):
     white_min  = np.array([  0, 215,   0])
     white_max  = np.array([255, 255, 255])
     white_mask = cv2.inRange(hls, white_min, white_max)
-    hls_mask = yellow_mask + white_mask + hls_mask
+    hls_mask = yellow_mask + white_mask #+ hls_mask
     
     # CIELUV color space. L channel performs well
     # on filtering white color.
@@ -236,7 +236,7 @@ ax2.set_title('Undistorted Image', fontsize=30)
 
 # ## 5. Find lane lines
 
-# In[120]:
+# In[6]:
 
 # Visiualize sliding window
 # https://blog.ytotech.com/2015/11/01/findpeaks-in-python/
@@ -244,6 +244,7 @@ ax2.set_title('Undistorted Image', fontsize=30)
 binary_img = create_threshold_binary_image(equalized)
 
 nb_win = 7
+win_width = 25
 width = binary_img.shape[1]
 height = binary_img.shape[0]
 win_size = math.ceil(height/nb_win)
@@ -258,8 +259,9 @@ for i, ax in enumerate(axes):
     
     # argmax
     mid = width // 2
-    l_peak = np.argmax(histogram[:mid])
-    r_peak = np.argmax(histogram[mid:]) + mid
+    window = np.ones(win_width)
+    l_peak = np.argmax(np.convolve(window, histogram[:mid]))
+    r_peak = np.argmax(np.convolve(window, histogram[mid:])) + mid
     ax.plot([l_peak, r_peak], histogram[[l_peak, r_peak]], 'D', color='g', ms=8)
     
     # peak
@@ -269,7 +271,7 @@ for i, ax in enumerate(axes):
     
 
 
-# In[121]:
+# In[7]:
 
 def find_lane_points(binary_image):
     """
@@ -289,9 +291,11 @@ def find_lane_points(binary_image):
     height = binary_image.shape[0]
     
     mid = width // 2
+    win_width = 25
+    window = np.ones(win_width)
     histogram = np.sum(binary_image[height//2:,:], axis=0)
-    l_base = np.argmax(histogram[:mid])
-    r_base = np.argmax(histogram[mid:]) + mid
+    l_base = np.argmax(np.convolve(window, histogram[:mid]))
+    r_base = np.argmax(np.convolve(window, histogram[mid:])) + mid
 
     nb_win = 8
     win_size = math.ceil(height/nb_win)
@@ -354,7 +358,7 @@ def find_lane_points(binary_image):
 l_points, r_points, out_img = find_lane_points(binary_img)
 
 
-# In[122]:
+# In[8]:
 
 def find_lane_points_with_prev(l_fit, r_fit, binary_image):
 
@@ -408,7 +412,7 @@ def find_lane_points_with_prev(l_fit, r_fit, binary_image):
 
 # ## 6. Measure Curvature
 
-# In[123]:
+# In[9]:
 
 def fit_poly(x_vals, y_vals, y_max):
     # fit second order polynomial
@@ -451,7 +455,7 @@ ax2.set_ylim(720, 0)
 ax2.set_title('Fit lines', fontsize=30)
 
 
-# In[124]:
+# In[10]:
 
 l_points, r_points, out_img = find_lane_points_with_prev(l_fit, r_fit, binary_img)
 
@@ -491,7 +495,7 @@ ax2.set_title('Fit lines', fontsize=30)
 
 # ## 7 & 8. Reversed Perspective Transform
 
-# In[125]:
+# In[11]:
 
 def create_lane_boundary_image(l_fit, r_fit, image):
 
@@ -520,7 +524,7 @@ plt.imshow(result)
 
 # ## Video
 
-# In[95]:
+# In[12]:
 
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
@@ -530,14 +534,14 @@ from IPython.display import HTML
 # 
 # Define a class to receive the characteristics of each line detection
 
-# In[96]:
+# In[18]:
 
 class Line():
     def __init__(self):  
         #: meters per pixel in y dimension
         self.ym_per_pix = 3/115 
         #: meters per pixel in x dimension
-        self.xm_per_pix = 3.7/750 
+        self.xm_per_pix = 3.7/700 
         
         self.radius_of_curvature = 0.0
         self.fit = None
@@ -575,9 +579,9 @@ class Lane():
     
     def __init__(self, prev_lane=None):
         #: meters per pixel in y dimension
-        self.ym_per_pix = 3./100 
+        self.ym_per_pix = 3/115 
         #: meters per pixel in x dimension
-        self.xm_per_pix = 3.7/740 
+        self.xm_per_pix = 3.7/700 
         
         self.max_line_distance = 5.
         self.min_line_distance = 1.2
@@ -606,18 +610,30 @@ class Lane():
             self.center = ((self.left_line.fit[2] + self.right_line.fit[2]) / 2 - 640)                           * self.xm_per_pix
             self.distance = np.abs(self.left_line.fit[2] - self.right_line.fit[2])                             * self.xm_per_pix
             
+            # TODO: check line distance
             if self.distance > self.max_line_distance or                self.distance < self.min_line_distance:
                 #print('Lines too close or too far. {}'.format(self.distance))
                 return True
             return True
         
-            # check curvature difference between left lane and right lane
+            # TODO: check curvature difference between left lane and right lane
             
         return False
         
-    def create_lane_boundary_image(self, image):
-        l_fit = self.left_line.fit 
-        r_fit = self.right_line.fit
+    def create_lane_boundary_image(self, image, history):
+        
+        l_fit = np.array([0., 0., 0.])
+        r_fit = np.array([0., 0., 0.])
+        
+        # smoothing
+        count = 0
+        for lane in [self] + history:
+            if lane.detected:
+                l_fit += lane.left_line.fit
+                r_fit += lane.right_line.fit
+                count += 1
+        l_fit /= count
+        r_fit /= count
         
         # Create an image to draw the lines on
         color_warp  = np.zeros_like(image).astype(np.uint8)
@@ -652,12 +668,20 @@ class Lane():
             cv2.polylines(image, [pts_right], False, (255, 255, 0))
 
 
-# In[147]:
+# In[39]:
 
 MTX, DIST = load_undistort_params()
 
 def process_frame(image):
-    HISTORY_SIZE = 15
+    
+    #######
+    # Load sample images
+    #idx = process_frame.index
+    #if idx in process_frame.image_list:
+    #    cv2.imwrite('{}{}.jpg'.format(process_frame.output_dir, idx),
+    #                cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+
+    HISTORY_SIZE = 10
     
     image = image.copy()
     
@@ -666,7 +690,12 @@ def process_frame(image):
     warped, M = perspective_transform(undist)
     if np.average(warped) < 160 or np.average(warped) > 225:
         warped = histogram_equalization(warped)
-    binary    = create_threshold_binary_image(warped)
+        
+    #######    
+    #process_frame.index += 1
+    #return image    
+        
+    binary = create_threshold_binary_image(warped)
     
     # find previous detected lane
     prev_lane = None
@@ -677,11 +706,9 @@ def process_frame(image):
   
     # extract lane lines
     if prev_lane and prev_lane.detected:
-        #print("######### with prev")
         l_points, r_points, out_img = find_lane_points_with_prev(
             prev_lane.left_line.fit, prev_lane.right_line.fit, binary)
     else:
-        #print("######### without prev")
         l_points, r_points, out_img = find_lane_points(binary)
         
     # default value
@@ -693,12 +720,7 @@ def process_frame(image):
     curr_lane.right_line.fit_poly(r_points[0], r_points[1], height)
     curr_lane.validate(prev_lane)
 
-    if curr_lane.detected:
-        boundary = curr_lane.create_lane_boundary_image(undist)
-    elif prev_lane and prev_lane.detected:
-        boundary = prev_lane.create_lane_boundary_image(undist)
-
-        
+    boundary = curr_lane.create_lane_boundary_image(undist, process_frame.history)
     boundary, M = perspective_transform(boundary, inverse=True)
     result      = cv2.addWeighted(undist, 1, boundary, 0.3, 0)
         
@@ -708,22 +730,12 @@ def process_frame(image):
   
     # build the result frame
     curr_lane.draw_fit_lines(out_img)
-    new_h = image.shape[0]//2
-    new_w = image.shape[1]//2
-    output = np.zeros_like(image)
+    output = result.copy()
     
-    undist = cv2.resize(undist, (0, 0), fx=.5, fy=.5)
-    binary = cv2.resize(binary, (0, 0), fx=.5, fy=.5)
-    out_img = cv2.resize(out_img, (0, 0), fx=.5, fy=.5)
-
+    binary = cv2.resize(binary, (0, 0), fx=.25, fy=.25)
     binary[binary > 0] = 255
-    
-    boundary = cv2.resize(boundary, (0, 0), fx=.5, fy=.5)
-    result = cv2.resize(result, (0, 0), fx=.5, fy=.5)
-    output[:new_h, :new_w] = undist
-    output[new_h:, :new_w] = out_img
-    output[:new_h, new_w:] = boundary
-    output[new_h:, new_w:] = result
+    binary = np.dstack((binary, binary, binary))
+    output[10: 190, 950: 1270] = binary
     
     # Print text
     cv2.putText(output, "Index: {}".format(process_frame.index),
@@ -734,11 +746,12 @@ def process_frame(image):
                 (50, 90), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255), 2)
     cv2.putText(output, "Line distance: %.2f m." % curr_lane.distance,
                 (50, 110), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255), 2)
-    
+    cv2.putText(output, "Car off center: %.2f m." % curr_lane.center,
+                (50, 130), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255), 2)
     if curr_lane.detected:
-        cv2.circle(output, (60, 140), 5, (0, 255, 0), 10)
+        cv2.circle(output, (60, 160), 5, (0, 255, 0), 10)
     else:
-        cv2.circle(output, (60, 140), 5, (255, 0, 0), 10)
+        cv2.circle(output, (60, 160), 5, (255, 0, 0), 10)
     
     process_frame.index += 1
     return output 
@@ -746,7 +759,7 @@ def process_frame(image):
 
 # ## Videos
 
-# In[143]:
+# In[ ]:
 
 process_frame.history = []
 process_frame.index = 0
@@ -757,10 +770,12 @@ clip_out = clip_in.fl_image(process_frame)
 get_ipython().magic('time clip_out.write_videofile(output, audio=False)')
 
 
-# In[142]:
+# In[ ]:
 
 process_frame.history = []
 process_frame.index = 0
+process_frame.image_list = [11, 169, 470]
+process_frame.output_dir = 'test_images/challenge/'
 
 output = 'videos/challenge_video_output.mp4'
 clip_in = VideoFileClip("videos/challenge_video.mp4")#.subclip(0, 5)
@@ -768,10 +783,12 @@ clip_out = clip_in.fl_image(process_frame)
 get_ipython().magic('time clip_out.write_videofile(output, audio=False)')
 
 
-# In[148]:
+# In[28]:
 
 process_frame.history = []
 process_frame.index = 0
+process_frame.image_list = [151, 190, 200, 276, 287, 304, 385, 581, 667, 703] + [i for i in range(1036, 1047)]
+process_frame.output_dir = 'test_images/harder_challenge/'
 
 output = 'videos/harder_challenge_video_output.mp4'
 clip_in = VideoFileClip("videos/harder_challenge_video.mp4")#.subclip(0,10)
@@ -786,6 +803,25 @@ HTML("""
   <source src="{0}">
 </video>
 """.format(output))
+
+
+# In[17]:
+
+#image_tmpl = 'test_images/mosaic/*.jpg'
+#images = glob.glob(image_tmpl)
+#h, w, d = 720, 1280, 3
+#sh = h//6
+#sw = w//6
+
+#final_image = np.zeros((sh*6, sw*6, d))
+#for idx, image in enumerate(images):
+#    img = cv2.imread(image)
+#    s_img = cv2.resize(img, (0, 0), fx=1/6, fy=1/6)
+#    y = int(idx // 6) * sh
+#    x = int(idx % 6) * sw
+#    final_image[y:y+sh, x:x+sw] = s_img
+    
+#cv2.imwrite('test_images/mosaic.jpg', final_image)
 
 
 # In[ ]:
