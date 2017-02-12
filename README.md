@@ -139,7 +139,7 @@ Vehicle position = ((line1_pos + line2_pos)/2 - image_width/2) * xm_per_pix
 Smoothing is done by averaging last 10 polynomail coefficients if the lines are detected.
 
 
-Here's a [link to my video result][video1] and [chanllenge video][video2].
+Here's a [link to my video result][video1] and [challenge video][video2].
 
 ---
 
