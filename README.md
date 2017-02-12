@@ -15,14 +15,14 @@ The goal of this project is to identify lane lines in the video using computer v
 
 [//]: # (Image References)
 
-[image1]: ./images/image1.png ""
-[image2]: ./images/image2.png ""
-[image3]: ./images/image3.png ""
-[image4]: ./images/image4.png ""
-[image5]: ./images/image5.png ""
-[image6]: ./images/image6.png ""
-[image7]: ./images/image7.png ""
-[image8]: ./images/image8.png ""
+[image1]: ./images/image1.png "1"
+[image2]: ./images/image2.png "2"
+[image3]: ./images/image3.png "3"
+[image4]: ./images/image4.png "4"
+[image5]: ./images/image5.png "5"
+[image6]: ./images/image6.png "6"
+[image7]: ./images/image7.png "7"
+[image8]: ./images/image8.png "8"
 [video1]: ./videos/project_video_output.mp4 "Video"
 
 
