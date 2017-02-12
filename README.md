@@ -24,6 +24,7 @@ The goal of this project is to identify lane lines in the video using computer v
 [image7]: ./images/image7.png "7"
 [image8]: ./images/image8.png "8"
 [video1]: ./videos/project_video_output.mp4 "Video"
+[video2]: ./videos/challenge_video_output.mp4 "Video2"
 
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
@@ -102,6 +103,27 @@ Boundary can be drawn by applying all y values (from 0 to image height) to the f
 
 ![alt text][image8]
 
+#### 6. Calculate radius of curvature and the position of the vehicle with respect to center
+
+First, we have to meature the length in meters per pixel in y and x dimensions. Y dimension factor is measured with the length of a dashed lane line, while x dimension factor is measured with the width of the lane.
+
+```
+ym_per_pix = 3 / 115
+xm_per_pix = 3.7 / 700
+```
+
+Radius of curavture is calculated by the following formula:
+```
+x = a*y^2 + b*y + c
+y_eval = y * ym_per_pix
+Radius of curvature = ((2*a*y_eval + b)^2 + 1)^1.5 / (2*a)
+```
+
+Center position of the camera is assumed to be at the center of the image. Center position of the lane is the average position between two detected lane lines. The difference between these two numbers is the distance the vehicle off the center of the lane.
+```
+Vehicle position = ((line1_pos + line2_pos)/2 - image_width/2) * xm_per_pix
+```
+
 ---
 
 ### Pipeline (video)
@@ -117,7 +139,7 @@ Boundary can be drawn by applying all y values (from 0 to image height) to the f
 Smoothing is done by averaging last 10 polynomail coefficients if the lines are detected.
 
 
-Here's a [link to my video result][video1]
+Here's a [link to my video result][video1] and [chanllenge video][video2].
 
 ---
 
