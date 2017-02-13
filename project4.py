@@ -8,7 +8,7 @@
 # 1. Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
 # 2. Apply a distortion correction to raw images.
 # 3. Apply a perspective transform to rectify binary image ("birds-eye view").
-# 4. Use color transforms, gradients, etc., to create a thresholded binary image.
+# 4. Use color transforms to create a thresholded binary image.
 # 5. Detect lane pixels and fit to find the lane boundary.
 # 6. Determine the curvature of the lane and vehicle position with respect to center.
 # 7. Warp the detected lane boundaries back onto the original image.
@@ -77,7 +77,7 @@ mtx, dist = camera_calibration('camera_cal/calibration*.jpg')
 
 # ## 2. Undistort raw image
 
-# In[2]:
+# In[3]:
 
 def load_undistort_params(input_dir='.'):
     input_file = os.path.join(input_dir, 'dist_pickle.p')
@@ -104,7 +104,7 @@ ax2.set_title('Undistorted Image', fontsize=30)
 
 # ## 3. Perspective transform
 
-# In[3]:
+# In[4]:
 
 def perspective_transform(image, inverse=False):
     """
@@ -145,7 +145,7 @@ cv2.imwrite('test_images/warped.jpg', cv2.cvtColor(warped_line, cv2.COLOR_BGR2RG
 
 # ### Histogram Equalization
 
-# In[4]:
+# In[5]:
 
 def histogram_equalization(image):
     """
@@ -168,7 +168,9 @@ ax2.imshow(cv2.cvtColor(equalized, cv2.COLOR_BGR2RGB))
 ax2.set_title('Undistorted Image', fontsize=30)
 
 
-# In[5]:
+# ### Threshold by HLS, LUV, LAB Color Spaces
+
+# In[6]:
 
 def create_threshold_binary_image(image, print_color=False):
     """
@@ -178,11 +180,7 @@ def create_threshold_binary_image(image, print_color=False):
     
     # HLS color space. S channel performs well
     # on filtering yellow and white
-    hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
-    #hls_min = np.array([  0,   0, 180])
-    #hls_max = np.array([255, 255, 255])
-    #hls_mask = cv2.inRange(hls, hls_min, hls_max)
-    
+    hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)    
     yellow_min  = np.array([ 10,  80, 100])
     yellow_max  = np.array([100, 210, 155])
     yellow_mask = cv2.inRange(hls, yellow_min, yellow_max)
@@ -206,21 +204,13 @@ def create_threshold_binary_image(image, print_color=False):
     lab_max = np.array([255, 255, 200])
     lab_mask = cv2.inRange(lab, lab_min, lab_max)
     
-    # sobel x (derivative in x axis) doesn't work well
-    #l_sobelx = cv2.Sobel(hls[:,:,1], cv2.CV_64F, 1, 0)
-    #l_abs_sobelx = np.abs(l_sobelx)
-    #l_scaled_sobel = np.uint8(255*l_abs_sobelx/np.max(l_abs_sobelx))
-    
-    # threshold x gradient
-    #sobel_min = np.array([20])
-    #sobel_max = np.array([100])
-    #l_sx_mask = cv2.inRange(l_scaled_sobel, sobel_min, sobel_max)
-    
     if print_color:
         return np.dstack((hls_mask, luv_mask, lab_mask))
 
     binary = np.zeros_like(image[:,:,0])
-    binary[yellow_mask.astype(bool) |            white_mask.astype(bool) |            hls_mask.astype(bool) |            luv_mask.astype(bool) |            lab_mask.astype(bool)] = 1    
+    binary[hls_mask.astype(bool) |            luv_mask.astype(bool) |            lab_mask.astype(bool)] = 1    
+    
+    # Try to drop small shapes
     #binary = cv2.erode(binary, (5, 5), iterations=1)
     return binary
     
@@ -236,7 +226,7 @@ ax2.set_title('Undistorted Image', fontsize=30)
 
 # ## 5. Find lane lines
 
-# In[6]:
+# In[7]:
 
 # Visiualize sliding window
 # https://blog.ytotech.com/2015/11/01/findpeaks-in-python/
@@ -271,7 +261,7 @@ for i, ax in enumerate(axes):
     
 
 
-# In[7]:
+# In[8]:
 
 def find_lane_points(binary_image):
     """
@@ -358,7 +348,7 @@ def find_lane_points(binary_image):
 l_points, r_points, out_img = find_lane_points(binary_img)
 
 
-# In[8]:
+# In[9]:
 
 def find_lane_points_with_prev(l_fit, r_fit, binary_image):
 
@@ -412,7 +402,7 @@ def find_lane_points_with_prev(l_fit, r_fit, binary_image):
 
 # ## 6. Measure Curvature
 
-# In[9]:
+# In[10]:
 
 def fit_poly(x_vals, y_vals, y_max):
     # fit second order polynomial
@@ -455,7 +445,7 @@ ax2.set_ylim(720, 0)
 ax2.set_title('Fit lines', fontsize=30)
 
 
-# In[10]:
+# In[11]:
 
 l_points, r_points, out_img = find_lane_points_with_prev(l_fit, r_fit, binary_img)
 
@@ -495,7 +485,7 @@ ax2.set_title('Fit lines', fontsize=30)
 
 # ## 7 & 8. Reversed Perspective Transform
 
-# In[11]:
+# In[12]:
 
 def create_lane_boundary_image(l_fit, r_fit, image):
 
@@ -524,7 +514,7 @@ plt.imshow(result)
 
 # ## Video
 
-# In[12]:
+# In[13]:
 
 from moviepy.editor import VideoFileClip
 from IPython.display import HTML
@@ -534,7 +524,7 @@ from IPython.display import HTML
 # 
 # Define a class to receive the characteristics of each line detection
 
-# In[18]:
+# In[14]:
 
 class Line():
     def __init__(self):  
@@ -593,6 +583,7 @@ class Lane():
         self.right_line = Line()
         
         self.prev_lane = prev_lane
+        self.min_curv_diff = 100
     
     def validate(self, prev_lane):
         
@@ -607,17 +598,25 @@ class Lane():
         
         if self.left_line and self.left_line.fit is not None and             self.right_line and self.right_line.fit is not None:
             # check distance between left lane and right lane
-            self.center = ((self.left_line.fit[2] + self.right_line.fit[2]) / 2 - 640)                           * self.xm_per_pix
+            l_fit = self.left_line.fit
+            r_fit = self.right_line.fit
+            
+            l_pos = l_fit[0]*720**2 + l_fit[1]*720 + l_fit[2]
+            r_pos = r_fit[0]*720**2 + r_fit[1]*720 + r_fit[2]
+            
+            self.center = ((l_pos + r_pos) / 2 - 640) * self.xm_per_pix
             self.distance = np.abs(self.left_line.fit[2] - self.right_line.fit[2])                             * self.xm_per_pix
             
             # TODO: check line distance
             if self.distance > self.max_line_distance or                self.distance < self.min_line_distance:
                 #print('Lines too close or too far. {}'.format(self.distance))
                 return True
-            return True
         
             # TODO: check curvature difference between left lane and right lane
-            
+            if self.left_line.radius_of_curvature -                 self.right_line.radius_of_curvature > self.min_curv_diff:
+                return True
+            return True
+                    
         return False
         
     def create_lane_boundary_image(self, image, history):
@@ -668,7 +667,7 @@ class Lane():
             cv2.polylines(image, [pts_right], False, (255, 255, 0))
 
 
-# In[39]:
+# In[15]:
 
 MTX, DIST = load_undistort_params()
 
@@ -759,7 +758,7 @@ def process_frame(image):
 
 # ## Videos
 
-# In[ ]:
+# In[16]:
 
 process_frame.history = []
 process_frame.index = 0
@@ -770,7 +769,7 @@ clip_out = clip_in.fl_image(process_frame)
 get_ipython().magic('time clip_out.write_videofile(output, audio=False)')
 
 
-# In[ ]:
+# In[17]:
 
 process_frame.history = []
 process_frame.index = 0
@@ -783,7 +782,7 @@ clip_out = clip_in.fl_image(process_frame)
 get_ipython().magic('time clip_out.write_videofile(output, audio=False)')
 
 
-# In[28]:
+# In[18]:
 
 process_frame.history = []
 process_frame.index = 0
