@@ -131,7 +131,7 @@ Vehicle position = ((line1_pos + line2_pos)/2 - image_width/2) * xm_per_pix
 #### Line validation
 
 1. Coefficient comparison: I compare the second order coefficient between frames. The difference should be smaller than 0.0005 according to my experiment. Otherwise, we flag this frame as lane line not detected.
-2. Distance between two lines: This is very hard in challenge videos. I can hardly detect consistant lane line distance, so this check is discarded in the final process.
+2. Distance between two lines: Distance between two lines should always be in the range of 3.7 +/- 0.5. The line position is calculated by applying the bottom of the image (y=720) to the fitted polynomail.
 3. Curvature comparison: This has the same issue as 2.,
 
 #### Smoothing

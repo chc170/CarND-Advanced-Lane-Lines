@@ -605,12 +605,11 @@ class Lane():
             r_pos = r_fit[0]*720**2 + r_fit[1]*720 + r_fit[2]
             
             self.center = ((l_pos + r_pos) / 2 - 640) * self.xm_per_pix
-            self.distance = np.abs(self.left_line.fit[2] - self.right_line.fit[2])                             * self.xm_per_pix
+            self.distance = np.abs(l_pos - r_pos) * self.xm_per_pix
             
-            # TODO: check line distance
             if self.distance > self.max_line_distance or                self.distance < self.min_line_distance:
                 #print('Lines too close or too far. {}'.format(self.distance))
-                return True
+                return False
         
             # TODO: check curvature difference between left lane and right lane
             if self.left_line.radius_of_curvature -                 self.right_line.radius_of_curvature > self.min_curv_diff:
